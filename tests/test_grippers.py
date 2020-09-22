@@ -1,5 +1,5 @@
 import unittest
-from tests.core import TestCore
+import pyrep
 from pyrep import PyRep
 from os import path
 
@@ -7,15 +7,31 @@ from pyrep.robots.end_effectors.panda_gripper import PandaGripper
 from pyrep.robots.end_effectors.mico_gripper import MicoGripper
 from pyrep.robots.end_effectors.jaco_gripper import JacoGripper
 from pyrep.robots.end_effectors.baxter_gripper import BaxterGripper
+from pyrep.robots.end_effectors.robotiq_85 import Robotiq85Gripper
 
 ASSET_DIR = path.join(path.dirname(path.abspath(__file__)), 'assets')
+pyrep.testing = True
 
 GRIPPERS = [
+    ('ROBOTIQ_85',Robotiq85Gripper,0.2),
     ('PandaGripper', PandaGripper, 0.04),
     ('BaxterGripper', BaxterGripper, 0.04),
     ('MicoGripper', MicoGripper, 0.2),
     ('JacoGripper', JacoGripper, 0.2),
 ]
+
+class TestCore(unittest.TestCase):
+
+    def setUp(self):
+        self.pyrep = PyRep()
+        self.pyrep.launch(path.join(ASSET_DIR, 'test_scene.ttt'), headless=True)
+        self.pyrep.step()
+        self.pyrep.start()
+
+    def tearDown(self):
+        self.pyrep.stop()
+        self.pyrep.step_ui()
+        self.pyrep.shutdown()
 
 
 class TestArmsAndConfigurationPaths(TestCore):

@@ -15,6 +15,7 @@ import numpy as np
 import math
 import time
 
+# from pyrep.robots.end_effectors.robotiq_85 import Robotiq85
 
 LOOPS = 30
 SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_reach_target.ttt')
