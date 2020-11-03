@@ -18,7 +18,7 @@ import numpy as np
 import math
 import time
 
-EPISODES = 30
+EPISODES = 1
 SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_door_env.ttt')
 
 pr = PyRep()
