@@ -20,9 +20,10 @@ from utils.dataset_generator import *
 import numpy as np
 import math
 import time
+import random
 from os import path
 
-EPISODES = 100
+EPISODES = 20
 SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_door_env.ttt')
 
 pr = PyRep()
@@ -42,9 +43,11 @@ agent.set_joint_positions(initial_joint_positions)
 handle_box = Shape("handle_boundingbox")
 handle_bounding_box = handle_box.get_bounding_box()
 
-print("Agent Joints",agent.get_joint_count())
+print("Agent Joints",agent.get_joint_positions())
 print("Agent Pose",agent.get_pose())
 print("BBox : ",handle_box.get_bounding_box())
+# print("Limits : ",agent.set_joint_positions([1.,0.,0.,0.,0.,0.,0.]))
+# print(" ->> : ",agent.get_joint_intervals())
 
 starting_joint_positions = agent.get_joint_positions()
 
@@ -57,8 +60,9 @@ def move_arm(position, quaternion, orientation , save_path, ignore_collisions=Fa
                             euler=[0, math.radians(180), 0],
                             ignore_collisions=ignore_collisions)
     arm_path.visualize()
-    i,max_step = 0,100
+    i,max_step = 0,1000
     done = False
+
 
     vision_data,depth_data_left,depth_data_right = [],[],[]
     joint_pose_list = []
@@ -66,21 +70,21 @@ def move_arm(position, quaternion, orientation , save_path, ignore_collisions=Fa
         done = arm_path.step()
         pr.step()
         
-        if save_data:
-            vision_data.append(vision_sensor.capture_rgb())
-            depth_data_left.append(depth_sensor_left.capture_rgb())
-            depth_data_right.append(depth_sensor_right.capture_rgb())
-            joint_pose_list.append(agent.get_joint_positions())
+    #     if save_data:
+    #         vision_data.append(vision_sensor.capture_rgb())
+    #         depth_data_left.append(depth_sensor_left.capture_rgb())
+    #         depth_data_right.append(depth_sensor_right.capture_rgb())
+    #         joint_pose_list.append(agent.get_joint_positions())
 
-            print(len(vision_data),len(depth_data_left),len(vision_data),len(joint_pose_list))
+    #         print(len(vision_data),len(depth_data_left),len(vision_data),len(joint_pose_list))
         
-        i += 1
+    #     i += 1
 
-    if save_data: 
-        np.save(path.join(save_path,"vision.npx"),np.array(vision_data))
-        np.save(path.join(save_path,"depth_data_left.npx"),np.array(depth_data_left))
-        np.save(path.join(save_path,"depth_data_right.npx"),np.array(depth_data_right))
-        np.save(path.join(save_path,"joint_pose_list.npx"),np.array(joint_pose_list))
+    # if save_data: 
+    #     np.save(path.join(save_path,"vision.npx"),np.array(vision_data))
+    #     np.save(path.join(save_path,"depth_data_left.npx"),np.array(depth_data_left))
+    #     np.save(path.join(save_path,"depth_data_right.npx"),np.array(depth_data_right))
+    #     np.save(path.join(save_path,"joint_pose_list.npx"),np.array(joint_pose_list))
 
     arm_path.clear_visualization()
 
@@ -99,7 +103,8 @@ target = Shape.create(type=PrimitiveShape.SPHERE,
 
 for i in range(EPISODES):
 
-    agent.set_joint_positions(starting_joint_positions)
+    # eps = random.sample(list(np.arange(0.01,0.3,0.001)), 7)
+    # agent.set_joint_positions(starting_joint_positions + eps)
 
     path_dict = create_folder_structure(DATASET_PATH,i)
 
@@ -110,11 +115,11 @@ for i in range(EPISODES):
     target.set_position(position = list(np.random.uniform(position_min, position_max)))
     target.set_orientation(start_point.get_orientation())
 
-    move_arm(start_point2.get_position(),start_point2.get_quaternion(),start_point2.get_orientation(),path_dict["episode_path"],True,False)
-    move_arm(start_point1.get_position(),start_point1.get_quaternion(),start_point1.get_orientation(),path_dict["episode_path"],True,False)
-    move_arm(start_point0.get_position(),start_point0.get_quaternion(),start_point0.get_orientation(),path_dict["episode_path"],True,False)
+    # move_arm(start_point2.get_position(),start_point2.get_quaternion(),start_point2.get_orientation(),path_dict["episode_path"],True,False)
+    # move_arm(start_point1.get_position(),start_point1.get_quaternion(),start_point1.get_orientation(),path_dict["episode_path"],True,False)
+    # move_arm(start_point0.get_position(),start_point0.get_quaternion(),start_point0.get_orientation(),path_dict["episode_path"],True,False)
     move_arm(start_point.get_position(),start_point.get_quaternion(),start_point.get_orientation(),path_dict["episode_path"],True,False)
-    move_arm(target.get_position(),target.get_quaternion(),target.get_orientation(),path_dict["episode_path"],True,False)
+    # move_arm(target.get_position(),target.get_quaternion(),target.get_orientation(),path_dict["episode_path"],True,False)
 
 print("--------------------------------")
 
