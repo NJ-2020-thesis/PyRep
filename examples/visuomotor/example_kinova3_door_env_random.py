@@ -31,19 +31,20 @@ print("------------LOGIC-------------")
 agent = Kinova3()
 agent.set_control_loop_enabled(True)
 agent.set_motor_locked_at_zero_velocity(True)
-initial_joint_positions = agent.get_joint_positions()
-agent.set_joint_positions(initial_joint_positions)
+starting_joint_positions = agent.get_joint_positions()
+agent.set_joint_positions(starting_joint_positions)
+
+gripper = Shape('ROBOTIQ_85')
+initial_gripper_positions = gripper.get_configuration_tree()
 
 handle = Shape("door_handle_visible")
-handle.set_color([0.5,0.5,1.0])
 handle_bounding_box = handle.get_bounding_box()
 
-starting_joint_positions = agent.get_joint_positions()
 
 def move_arm(position, quaternion, orientation, ignore_collisions=False):
-    arm_path = agent.get_path(position=position,
-                            # euler=[0, math.radians(180), 0],
-                            euler=[0, 0, 0],
+    arm_path = agent.get_linear_path(position=position,
+                            euler=[0, math.radians(180), 0],
+                            # euler=[0, 0, 0],
                             ignore_collisions=ignore_collisions)
     arm_path.visualize()
     done = False
@@ -64,12 +65,15 @@ start_point2 = Dummy('start_point2')
 target = Dummy('start_point3')
 
 position_min, position_max = [handle_bounding_box[0],handle_bounding_box[2],handle_bounding_box[4]], \
-                            [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*0.3]
+                            [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*0.1]
+random_pose = list(np.arange(0.01,0.05,0.001))
 
 for i in range(EPISODES):
 
-    eps = random.sample(list(np.arange(0.01,0.03,0.001)), 7)
+    eps = random.sample(random_pose, 7)
     agent.set_joint_positions(np.add(starting_joint_positions,eps))
+
+    pr.set_configuration_tree(initial_gripper_positions)
 
         # print(position_min,position_max)
     target.set_position(position = list(np.random.uniform(position_min, position_max)),relative_to=handle)
@@ -81,7 +85,7 @@ for i in range(EPISODES):
     # move_arm(start_point0.get_position(),start_point0.get_quaternion(),start_point0.get_orientation(),False)
     # move_arm(start_point.get_position(),start_point.get_quaternion(),start_point.get_orientation(),False)
         move_arm(target.get_position(),target.get_quaternion(),target.get_orientation(),True)
-
+        print("SUccessful!")
     except:
         print("SKIPPING")
 
@@ -91,7 +95,3 @@ print("--------------------------------")
 pr.stop()
 pr.shutdown()
 
-
-
-# [-0.07000000029802322, -0.047999996691942215, -0.03500000014901161] 
-# [0.07000000029802322, 0.047999996691942215, 0.03500000014901161]
