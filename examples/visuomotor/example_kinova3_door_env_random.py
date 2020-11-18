@@ -8,6 +8,7 @@ from pyrep.errors import ConfigurationPathError
 from pyrep.robots.arms.kinova3 import Kinova3
 from pyrep.objects.camera import Camera
 from pyrep.objects.vision_sensor import VisionSensor 
+from pyrep.objects.proximity_sensor import ProximitySensor 
 
 from utils.dataset_generator import *
 from utils.manip_utils import move_arm
@@ -19,7 +20,7 @@ import random
 from os import path
 
 
-EPISODES = 2
+EPISODES = 10
 SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_door_env_random.ttt')
 
 pr = PyRep()
@@ -44,6 +45,7 @@ handle_bounding_box = handle.get_bounding_box()
 door = Shape('door_frame')
 door_state = door.get_configuration_tree()
 
+proximity_sensor = ProximitySensor('ROBOTIQ_85_attachProxSensor')
 # ---------------------------------------
 
 target = Dummy('start_point3')
@@ -58,7 +60,6 @@ for i in range(EPISODES):
     eps[6] = random.sample(list(np.arange(-3.0,3.0,0.4)),1)[0]
     agent.set_joint_positions(np.add(starting_joint_positions,eps))
     # agent.set_joint_positions([0,0,0,0,0,0,0])
-    # print(agent.get_joint_intervals())
 
     pr.set_configuration_tree(gripper_state)
     pr.set_configuration_tree(door_state)
@@ -71,7 +72,7 @@ for i in range(EPISODES):
     # move_arm(start_point1.get_position(),start_point1.get_quaternion(),start_point1.get_orientation(),False)
     # move_arm(start_point0.get_position(),start_point0.get_quaternion(),start_point0.get_orientation(),False)
     # move_arm(start_point.get_position(),start_point.get_quaternion(),start_point.get_orientation(),False)
-        move_arm(pr,agent,target.get_position(),target.get_quaternion(),target.get_orientation(),True)
+        move_arm(pr,agent,proximity_sensor,target.get_position(),target.get_quaternion(),target.get_orientation(),True)
         print("Successful!")
     except:
         print("SKIPPING")
