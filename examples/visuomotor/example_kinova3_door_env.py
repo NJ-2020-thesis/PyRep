@@ -103,10 +103,10 @@ target = Shape.create(type=PrimitiveShape.SPHERE,
 
 for i in range(EPISODES):
 
-    # eps = random.sample(list(np.arange(0.01,0.3,0.001)), 7)
-    # agent.set_joint_positions(starting_joint_positions + eps)
+    eps = random.sample(list(np.arange(0.01,0.3,0.001)), 7)
+    agent.set_joint_positions(starting_joint_positions + eps)
 
-    path_dict = create_folder_structure(DATASET_PATH,i)
+    # path_dict = create_folder_structure(DATASET_PATH,i)
 
     # position_min, position_max = [0.8, -0.2, 1.0], [1.0, 0.2, 1.4]
     position_min, position_max = [handle_bounding_box[0],handle_bounding_box[1],handle_bounding_box[2]], \
