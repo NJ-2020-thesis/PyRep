@@ -11,7 +11,7 @@ from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.objects.proximity_sensor import ProximitySensor 
 
 from utils.dataset_generator import *
-from utils.manip_utils import move_arm
+from utils.manip_utils import move_arm,move_arm_to_end
 
 import numpy as np
 import math
@@ -25,6 +25,7 @@ SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_door_env_random.ttt
 
 pr = PyRep()
 pr.launch(SCENE_FILE, headless=False)
+pr.set_simulation_timestep(0.2)
 pr.start()
 
 
@@ -41,6 +42,7 @@ gripper_state = gripper.get_configuration_tree()
 
 handle = Shape("door_handle_visible")
 handle_bounding_box = handle.get_bounding_box()
+handle_fixed_position = handle.get_position()
 
 door = Shape('door_frame')
 door_state = door.get_configuration_tree()
@@ -50,9 +52,13 @@ proximity_sensor = ProximitySensor('ROBOTIQ_85_attachProxSensor')
 
 target = Dummy('start_point3')
 
+# Bounding box within wich we get successful grasp
+BOUNDING_BOX_EPS = 0.01
 position_min, position_max = [handle_bounding_box[0],handle_bounding_box[2],handle_bounding_box[4]], \
-                            [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*0.01]
-random_pose = list(np.arange(-0.05,0.05,0.002))
+                            [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*BOUNDING_BOX_EPS]
+
+# Random pose for robot 
+random_pose = list(np.arange(-0.03,0.03,0.002))
 
 for i in range(EPISODES):
 
@@ -66,16 +72,15 @@ for i in range(EPISODES):
 
     target.set_position(position = list(np.random.uniform(position_min, position_max)),relative_to=handle)
         # target.set_position([0,0,0],relative_to=handle)
-
+    print()
     try :
-    # move_arm(start_point2.get_position(),start_point2.get_quaternion(),start_point2.get_orientation(),False)
-    # move_arm(start_point1.get_position(),start_point1.get_quaternion(),start_point1.get_orientation(),False)
-    # move_arm(start_point0.get_position(),start_point0.get_quaternion(),start_point0.get_orientation(),False)
-    # move_arm(start_point.get_position(),start_point.get_quaternion(),start_point.get_orientation(),False)
-        move_arm(pr,agent,proximity_sensor,target.get_position(),target.get_quaternion(),target.get_orientation(),True)
-        print("Successful!")
-    except:
+        move_arm_to_end(pr,agent,proximity_sensor,target.get_position(),target.get_quaternion(),target.get_orientation(),True)
+        print(handle_fixed_position)
+        print(handle.get_position())
+        print("Successful! ",i)
+    except ConfigurationPathError as e:
         print("SKIPPING")
+        continue
 
 
 print("--------------------------------")
