@@ -23,11 +23,12 @@ from os import path
 import numpy as np
 import pickle
 import glob
+import uuid
 
 text_file = open("/home/anirudh/Desktop/Dataset/new.txt", "wb")
 
 # ----------Variables-----------
-EPISODES = 10
+EPISODES = 200
 DATASET_PATH = "/home/anirudh/Desktop/Dataset"
 SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_door_env_random.ttt')
 
@@ -72,7 +73,7 @@ target = Dummy('start_point3')
 
 
 # Bounding box within wich we get successful grasp
-BOUNDING_BOX_EPS = 0.01
+BOUNDING_BOX_EPS = 0.003
 position_min, position_max = [handle_bounding_box[0],handle_bounding_box[2],handle_bounding_box[4]], \
                             [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*BOUNDING_BOX_EPS]
 
@@ -82,6 +83,7 @@ random_pose = list(np.arange(-0.03,0.03,0.002))
 result_list = []
 for i in range(EPISODES):
 
+    # ----------------------------------------------
     # Randomizing the initial poses of the 
     # robot and handle in the environment.
     # ROBOT POSE RANDOMIZATION
@@ -94,14 +96,17 @@ for i in range(EPISODES):
     pr.set_configuration_tree(gripper_state)
     pr.set_configuration_tree(door_state)
 
+    # ----------------------------------------------
     # TEXTURE RANDOMIZATION
     # ---> Door
     door_path = random.choice(DOOR_TEXTURES)
     print(door_path)
     d_text_ob, door_texture = pr.create_texture(door_path)
     for item in door_surface.ungroup():
-        item.remove_texture()
-        item.set_texture(door_texture,TextureMappingMode.SPHERE)
+        print(item.get_name())
+        if item.get_name() == "Plane_4":
+            item.remove_texture()
+            item.set_texture(door_texture,TextureMappingMode.SPHERE)
     d_text_ob.remove()
     
     # ---> Handle
@@ -110,13 +115,14 @@ for i in range(EPISODES):
     handle.set_texture(handle_texture,TextureMappingMode.CYLINDER)
     h_text_ob.remove()
 
+    # ----------------------------------------------
     target.set_position(position = list(np.random.uniform(position_min, position_max)),relative_to=handle)
 
     try :
         initial_image = vision_sensor.capture_rgb()
         initial_depth_left = depth_sensor_left.capture_depth()
         initial_depth_right = depth_sensor_right.capture_depth()
-        # print(initial_image.shape)
+
         cv2.imwrite(path.join(DATASET_PATH,"initial_rgb_"+str(i)+".png"),initial_image*255)
         # cv2.imwrite(path.join(DATASET_PATH,"initial_depth_l_"+str(i)+".png"),initial_depth_left*255)
         # cv2.imwrite(path.join(DATASET_PATH,"initial_depth_r_"+str(i)+".png"),initial_depth_right*255)
@@ -132,21 +138,22 @@ for i in range(EPISODES):
 
         robot_end_joint_positions = agent.get_joint_positions()
 
-        if np.any(handle_pos_eps > 0.005 ) or np.any(handle_angle_eps > 0.3 ): 
+        if np.any(handle_pos_eps > 0.01 ) or np.any(handle_angle_eps > 0.3 ): 
+            result_list.append([i,"failure",handle.get_orientation(),handle.get_position(),handle_pos_eps,handle_angle_eps,random_start_joint_positions,robot_end_joint_positions])
+            # print(str(i),",","failure",",",random_start_joint_positions,",",robot_end_joint_positions)
+
             final_image = vision_sensor.capture_rgb()
             final_depth_left = depth_sensor_left.capture_depth()
             final_depth_right = depth_sensor_right.capture_depth()
 
-            result_list.append([i,"failure",handle.get_orientation(),handle.get_position(),handle_pos_eps,handle_angle_eps,random_start_joint_positions,robot_end_joint_positions])
-
             cv2.imwrite(path.join(DATASET_PATH,"end_failure_rgb_"+str(i)+".png"),final_image*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_failure_depth_l_"+str(i)+".png"),final_depth_left*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_failure_depth_r_"+str(i)+".png"),final_depth_right*255)
-            # print(str(i),",","failure",",",random_start_joint_positions,",",robot_end_joint_positions)
             
         else:
             result_list.append([i,"success",handle.get_orientation(),handle.get_position(),handle_pos_eps,handle_angle_eps,random_start_joint_positions,robot_end_joint_positions])
             # print(str(i),",","success",",",random_start_joint_positions,",",robot_end_joint_positions)
+
             final_image = vision_sensor.capture_rgb()
             final_depth_left = depth_sensor_left.capture_depth()
             final_depth_right = depth_sensor_right.capture_depth()
@@ -154,7 +161,6 @@ for i in range(EPISODES):
             cv2.imwrite(path.join(DATASET_PATH,"end_success_rgb_"+str(i)+".png"),final_image*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_success_depth_l_"+str(i)+".png"),final_depth_left*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_success_depth_r_"+str(i)+".png"),final_depth_right*255)
-
 
     except ConfigurationPathError as e:
         print("SKIPPING")
