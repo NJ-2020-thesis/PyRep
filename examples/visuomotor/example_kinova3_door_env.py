@@ -23,7 +23,7 @@ import time
 import random
 from os import path
 
-EPISODES = 20
+EPISODES = 10
 SCENE_FILE = join(dirname(abspath(__file__)), 'scene_kinova3_door_env.ttt')
 
 pr = PyRep()

@@ -33,14 +33,17 @@ def move_arm_to_end(pr,agent,proximity,position, quaternion, orientation, ignore
     """
     Directly moves the arm to the end of the path.
     """
-    DISTANCE = 0.05
+    DISTANCE = 0.03
     arm_path = agent.get_path(position=position,
                             euler=[0, math.radians(180), 0],
                             # orientation=orientation,
                             # euler=[0, 0, 0],
                             ignore_collisions=ignore_collisions,
                             )
-    print("Path found!!")
+    # print("Path found!!")
     arm_path.set_to_end()
     if proximity.read() < DISTANCE:
-        pass
+        return True
+    
+    else:
+        return False
