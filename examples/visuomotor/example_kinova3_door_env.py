@@ -104,7 +104,7 @@ target = Shape.create(type=PrimitiveShape.SPHERE,
 for i in range(EPISODES):
 
     eps = random.sample(list(np.arange(0.01,0.3,0.001)), 7)
-    agent.set_joint_positions(starting_joint_positions + eps)
+    agent.set_joint_positions(starting_joint_positions )
 
     # path_dict = create_folder_structure(DATASET_PATH,i)
 
@@ -118,7 +118,7 @@ for i in range(EPISODES):
     # move_arm(start_point2.get_position(),start_point2.get_quaternion(),start_point2.get_orientation(),path_dict["episode_path"],True,False)
     # move_arm(start_point1.get_position(),start_point1.get_quaternion(),start_point1.get_orientation(),path_dict["episode_path"],True,False)
     # move_arm(start_point0.get_position(),start_point0.get_quaternion(),start_point0.get_orientation(),path_dict["episode_path"],True,False)
-    move_arm(start_point.get_position(),start_point.get_quaternion(),start_point.get_orientation(),path_dict["episode_path"],True,False)
+    # move_arm(start_point.get_position(),start_point.get_quaternion(),start_point.get_orientation(),path_dict["episode_path"],True,False)
     # move_arm(target.get_position(),target.get_quaternion(),target.get_orientation(),path_dict["episode_path"],True,False)
 
 print("--------------------------------")

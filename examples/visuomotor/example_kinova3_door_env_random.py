@@ -89,7 +89,7 @@ for i in range(EPISODES):
     # ROBOT POSE RANDOMIZATION
     eps = random.sample(random_pose, 7)
     eps[6] = random.sample(list(np.arange(-3.0,3.0,0.2)),1)[0] # randomizing the gripper
-    random_start_joint_positions = np.add(starting_joint_positions,eps)
+    random_start_joint_positions = np.add(starting_joint_positions ,eps)
     agent.set_joint_positions(random_start_joint_positions)
 
     # Reset env
@@ -115,7 +115,7 @@ for i in range(EPISODES):
     handle.set_texture(handle_texture,TextureMappingMode.CYLINDER)
     h_text_ob.remove()
 
-    # ----------------------------------------------
+    # # ----------------------------------------------
     target.set_position(position = list(np.random.uniform(position_min, position_max)),relative_to=handle)
 
     try :
@@ -123,7 +123,7 @@ for i in range(EPISODES):
         initial_depth_left = depth_sensor_left.capture_depth()
         initial_depth_right = depth_sensor_right.capture_depth()
 
-        cv2.imwrite(path.join(DATASET_PATH,"initial_rgb_"+str(i)+".png"),initial_image*255)
+        # cv2.imwrite(path.join(DATASET_PATH,"initial_rgb_"+str(i)+".png"),initial_image*255)
         # cv2.imwrite(path.join(DATASET_PATH,"initial_depth_l_"+str(i)+".png"),initial_depth_left*255)
         # cv2.imwrite(path.join(DATASET_PATH,"initial_depth_r_"+str(i)+".png"),initial_depth_right*255)
 
@@ -146,7 +146,7 @@ for i in range(EPISODES):
             final_depth_left = depth_sensor_left.capture_depth()
             final_depth_right = depth_sensor_right.capture_depth()
 
-            cv2.imwrite(path.join(DATASET_PATH,"end_failure_rgb_"+str(i)+".png"),final_image*255)
+            # cv2.imwrite(path.join(DATASET_PATH,"end_failure_rgb_"+str(i)+".png"),final_image*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_failure_depth_l_"+str(i)+".png"),final_depth_left*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_failure_depth_r_"+str(i)+".png"),final_depth_right*255)
             
@@ -158,7 +158,7 @@ for i in range(EPISODES):
             final_depth_left = depth_sensor_left.capture_depth()
             final_depth_right = depth_sensor_right.capture_depth()
             
-            cv2.imwrite(path.join(DATASET_PATH,"end_success_rgb_"+str(i)+".png"),final_image*255)
+            # cv2.imwrite(path.join(DATASET_PATH,"end_success_rgb_"+str(i)+".png"),final_image*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_success_depth_l_"+str(i)+".png"),final_depth_left*255)
             # cv2.imwrite(path.join(DATASET_PATH,"end_success_depth_r_"+str(i)+".png"),final_depth_right*255)
 
