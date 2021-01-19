@@ -4,6 +4,8 @@ from gym import spaces
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 
+from pyrep.objects.vision_sensor import VisionSensor 
+
 from os.path import dirname, join, abspath
 from pyrep import PyRep
 from pyrep.robots.arms.panda import Panda
@@ -19,8 +21,8 @@ log_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuo
 
 SCENE_FILE = join(dirname(abspath(__file__)),
                   'scene_kinova3_door_env_random.ttt')
-EPISODES = 100000
-EPISODE_LENGTH = 100000
+EPISODES = 5
+EPISODE_LENGTH = 100
 
 
 class ReacherEnv(gym.Env):
@@ -35,36 +37,51 @@ class ReacherEnv(gym.Env):
         self.agent = Kinova3()
         self.agent.set_control_loop_enabled(False)
         self.agent.set_motor_locked_at_zero_velocity(True)
-
-        self.target = Dummy('start_point3')
-        print(self.target.get_position())
-
         self.agent_ee_tip = self.agent.get_tip()
         self.initial_joint_positions = self.agent.get_joint_positions()
+
+        self.vision_sensor = VisionSensor("vision_sensor")
+        self.vision_sensor.set_resolution([64,64])
 
         self.handle = Shape("door_handle_visible")
         handle_bounding_box = self.handle.get_bounding_box()
 
+        # Env initial state
+        gripper = Shape('ROBOTIQ_85')
+        self.gripper_state = gripper.get_configuration_tree()
+        door = Shape('door_frame')
+        self.door_state = door.get_configuration_tree()
+
+
         # Bounding box within wich we get successful grasp
         BOUNDING_BOX_EPS = 0.003
+        self.target = Dummy('start_point3')
         position_min, position_max = [handle_bounding_box[0],handle_bounding_box[2],handle_bounding_box[4]], \
                             [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*BOUNDING_BOX_EPS]
         self.random_handle_pos = list(np.random.uniform(position_min, position_max))
         self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
-        print(self.target.get_position())
 
-        self.action_space = spaces.Box(low=-3.0, high=3.0, shape=(7,), dtype=np.float)
-        self.observation_space = spaces.Box(low=-3.0, high=3.0, shape=(17,), dtype=np.float)
+        # Setting action and state space for robot 
+        self.action_space = spaces.Box(low=np.asarray([val[0] for val in self.agent.get_joint_intervals()[1]]),
+                                     high=np.asarray([val[1] for val in self.agent.get_joint_intervals()[1]]), dtype=np.float)
+        self.observation_space = spaces.Box(low=-3.0, high=3.0, shape=(7,), dtype=np.float)
 
 
     def _get_state(self):
         # Return state containing arm joint angles/velocities & target position
-        return np.concatenate([self.agent.get_joint_positions(),
-                               self.agent.get_joint_velocities(),
-                               self.target.get_position()])
+        # print(self.agent.get_joint_intervals())
+        # print(self.agent.get_joint_upper_velocity_limits())
+        initial_image = self.vision_sensor.capture_rgb()
+        # initial_representation = 
+        # goal_representation = 
+        return np.concatenate([self.agent.get_joint_positions()
+                               ])
 
     def reset(self):
         # Get a random position within a cuboid and set the target position
+        # Reset env
+        self.pr.set_configuration_tree(self.gripper_state)
+        self.pr.set_configuration_tree(self.door_state)
         self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
         self.agent.set_joint_positions(self.initial_joint_positions)
         return self._get_state()
@@ -74,12 +91,12 @@ class ReacherEnv(gym.Env):
         self.pr.step()  # Step the physics simulation
         ax, ay, az = self.agent_ee_tip.get_position()
         tx, ty, tz = self.target.get_position()
+
         # Reward is negative distance to target
         reward = -np.sqrt((ax - tx) ** 2 + (ay - ty) ** 2 + (az - tz) ** 2)
         info = {}
         done = False
         print(reward)
-        # print("--->",self._get_state(),self._get_state().shape)
 
         return self._get_state(),reward,done,info
 
@@ -89,14 +106,14 @@ class ReacherEnv(gym.Env):
 
 
 env = ReacherEnv()
-model = PPO('MlpPolicy', env, verbose=2,tensorboard_log=log_path)
+model = PPO('MlpPolicy',n_steps = EPISODE_LENGTH, n_epochs= EPISODES ,env=env, verbose=2,tensorboard_log=log_path)
 model.learn(total_timesteps=EPISODE_LENGTH)
 model.save(model_path)
 
 # check_env(env, warn=True)
 
-rewards = []
 
+rewards = []
 obs = env.reset()
 for i in range(EPISODES):
 
