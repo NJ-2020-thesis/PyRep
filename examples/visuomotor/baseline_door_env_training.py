@@ -21,9 +21,10 @@ log_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuo
 
 SCENE_FILE = join(dirname(abspath(__file__)),
                   'scene_kinova3_door_env_random.ttt')
-EPISODES = 5
-EPISODE_LENGTH = 100
 
+POLICY_UPDATE_STEPS = 50
+EPISODE_LENGTH = 300
+TOTAL_TIMESTEPS = 100000
 
 class ReacherEnv(gym.Env):
 
@@ -62,8 +63,10 @@ class ReacherEnv(gym.Env):
         self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
 
         # Setting action and state space for robot 
-        self.action_space = spaces.Box(low=np.asarray([val[0] for val in self.agent.get_joint_intervals()[1]]),
-                                     high=np.asarray([val[1] for val in self.agent.get_joint_intervals()[1]]), dtype=np.float)
+        # self.action_space = spaces.Box(low=np.asarray([val[0] for val in self.agent.get_joint_intervals()[1]]),
+        #                              high=np.asarray([val[1] for val in self.agent.get_joint_intervals()[1]]), dtype=np.float)
+        self.action_space = spaces.Box(low=np.asarray([-val for val in self.agent.get_joint_upper_velocity_limits()]),
+                                     high=np.asarray([val for val in self.agent.get_joint_upper_velocity_limits()]), dtype=np.float)
         self.observation_space = spaces.Box(low=-3.0, high=3.0, shape=(7,), dtype=np.float)
 
 
@@ -106,25 +109,25 @@ class ReacherEnv(gym.Env):
 
 
 env = ReacherEnv()
-model = PPO('MlpPolicy',n_steps = EPISODE_LENGTH, n_epochs= EPISODES ,env=env, verbose=2,tensorboard_log=log_path)
-model.learn(total_timesteps=EPISODE_LENGTH)
+model = PPO('MlpPolicy',n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS ,env=env, verbose=2,tensorboard_log=log_path)
+model.learn(total_timesteps=TOTAL_TIMESTEPS)
 model.save(model_path)
 
 # check_env(env, warn=True)
 
 
-rewards = []
-obs = env.reset()
-for i in range(EPISODES):
+# rewards = []
+# obs = env.reset()
+# for i in range(EPISODES):
 
-    action, _states = model.predict(obs, deterministic=True)
-    obs,reward,done,info = env.step(action)
-    rewards.append(reward)
-    if done:
-      obs = env.reset()
-    print("ENV : ",i," ", "REWARD : ",reward)
+#     action, _states = model.predict(obs, deterministic=True)
+#     obs,reward,done,info = env.step(action)
+#     rewards.append(reward)
+#     if done:
+#       obs = env.reset()
+#     print("ENV : ",i," ", "REWARD : ",reward)
 
-np.save(rewards_file,rewards,allow_pickle=False)
+# np.save(rewards_file,rewards,allow_pickle=False)
 
 env.close()
 env.shutdown()
