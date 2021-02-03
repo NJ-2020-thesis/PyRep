@@ -15,16 +15,16 @@ from pyrep.objects.dummy import Dummy
 import numpy as np
 import pickle
 
-rewards_file = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/results/rewards_1000.txt"
-model_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/results/model_saved_1000.mdl"
+rewards_file = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/results/rewards_10000.txt"
+model_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/results/model_saved_10000.mdl"
 log_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/log/"
 
 SCENE_FILE = join(dirname(abspath(__file__)),
                   'scene_kinova3_door_env_random.ttt')
 
 POLICY_UPDATE_STEPS = 50
-EPISODE_LENGTH = 300
-TOTAL_TIMESTEPS = 1000000
+EPISODE_LENGTH = 30000
+TOTAL_TIMESTEPS = 200000
 
 class ReacherEnv(gym.Env):
 
@@ -124,16 +124,16 @@ model.load(load_model_path,env)
 # check_env(env, warn=True)
 
 
-# rewards = []
-# obs = env.reset()
-# for i in range(EPISODE_LENGTH):
+rewards = []
+obs = env.reset()
+for i in range(EPISODE_LENGTH):
 
-#     action, _states = model.predict(obs, deterministic=True)
-#     obs,reward,done,info = env.step(action)
-#     rewards.append(reward)
-#     if done:
-#       obs = env.reset()
-#     print("ENV : ",i," ", "REWARD : ",reward)
+    action, _states = model.predict(obs, deterministic=True)
+    obs,reward,done,info = env.step(action)
+    rewards.append(reward)
+    if done:
+      obs = env.reset()
+    print("ENV : ",i," ", "REWARD : ",reward)
 
 # np.save(rewards_file,rewards,allow_pickle=False)
 
