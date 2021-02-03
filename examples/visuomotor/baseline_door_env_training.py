@@ -24,7 +24,7 @@ SCENE_FILE = join(dirname(abspath(__file__)),
 
 POLICY_UPDATE_STEPS = 50
 EPISODE_LENGTH = 300
-TOTAL_TIMESTEPS = 1000000
+TOTAL_TIMESTEPS = 1000
 
 class ReacherEnv(gym.Env):
 

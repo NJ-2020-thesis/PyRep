@@ -8,12 +8,14 @@ from pyrep.robots.end_effectors.mico_gripper import MicoGripper
 from pyrep.robots.end_effectors.jaco_gripper import JacoGripper
 from pyrep.robots.end_effectors.baxter_gripper import BaxterGripper
 from pyrep.robots.end_effectors.robotiq_85 import Robotiq85Gripper
+# from pyrep.robots.end_effectors.robotiq85_gripper import Robotiq85Gripper
 
 ASSET_DIR = path.join(path.dirname(path.abspath(__file__)), 'assets')
 pyrep.testing = True
 
 GRIPPERS = [
     ('ROBOTIQ_85',Robotiq85Gripper,0.2),
+    # ('Robotiq85Gripper', Robotiq85Gripper, 0.04),
     ('PandaGripper', PandaGripper, 0.04),
     ('BaxterGripper', BaxterGripper, 0.04),
     ('MicoGripper', MicoGripper, 0.2),
