@@ -7,26 +7,30 @@ def move_arm(pr,agent,proximity,position, quaternion, orientation, ignore_collis
     """
     Moves arm along with visualization of complete path.
     """
-    arm_path = agent.get_path(position=position,
-                            euler=[0, math.radians(180), 0],
-                            # orientation=orientation,
-                            # euler=[0, 0, 0],
-                            ignore_collisions=ignore_collisions,
-                            )
-    print("Path found!!")
-    # print(arm_path.values)
-    arm_path.visualize()
-    done = False
-    i = 0
-    while (i < 100) and (not done) :
-        i += 1
-        done = arm_path.step()
-        print(proximity.read())
-        # print(agent.get_joint_positions())
-        pr.step()
+    try:
+        arm_path = agent.get_path(position=position,
+                                euler=[0, math.radians(180), 0],
+                                # orientation=orientation,
+                                # euler=[0, 0, 0],
+                                ignore_collisions=ignore_collisions,
+                                )
+        print("Path found!!")
+        # print(arm_path.values)
+        arm_path.visualize()
+        done = False
+        i = 0
+        while (i < 100) and (not done) :
+            i += 1
+            done = arm_path.step()
+            print(proximity.read())
+            # print(agent.get_joint_positions())
+            pr.step()
 
-    arm_path.clear_visualization()
+        arm_path.clear_visualization()
 
+    except ConfigurationPathError:
+        print("Path error!!")
+        pass  # Allowed. Try again, but with non-linear.
 
 
 def move_arm_to_end(pr,agent,proximity,position, quaternion, orientation, ignore_collisions=False):

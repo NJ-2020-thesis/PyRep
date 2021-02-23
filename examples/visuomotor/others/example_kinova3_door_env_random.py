@@ -128,7 +128,7 @@ for i in range(EPISODES):
         # cv2.imwrite(path.join(DATASET_PATH,"initial_depth_r_"+str(i)+".png"),initial_depth_right*255)
 
         # print("-->",agent.get_joint_positions())
-        move_arm_to_end(pr,agent,proximity_sensor,target.get_position()
+        move_arm(pr,agent,proximity_sensor,target.get_position()
                         ,target.get_quaternion(),target.get_orientation(),
                         True)
         # print(handle_fixed_position)
@@ -167,7 +167,7 @@ for i in range(EPISODES):
         continue
 
 print("--->",len(result_list))
-pickle.dump(result_list,text_file)
+# pickle.dump(result_list,text_file)
 
 print("--------------------------------")
 
