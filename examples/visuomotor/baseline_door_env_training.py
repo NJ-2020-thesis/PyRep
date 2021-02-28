@@ -50,12 +50,12 @@ print("GPU Available : ",stable_baselines3.common.utils.get_device())
 
 class ReacherEnv(gym.Env):
 
-    def __init__(self):
+    def __init__(self,headless=True):
         super(ReacherEnv,self).__init__()
 
         # Creating a Custom Pyrep environment 
         self.pr = PyRep()
-        self.pr.launch(SCENE_FILE, headless=False)
+        self.pr.launch(SCENE_FILE, headless=headless)
         self.pr.start()
 
         # -------------------------------------------------
@@ -102,7 +102,6 @@ class ReacherEnv(gym.Env):
                                      high=np.asarray([val[1] for val in self.agent.get_joint_intervals()[1]]), dtype=np.float)
 
         self.initial_distance = self.distance_to_goal()
-        # print("Initial distance : ",self.initial_distance)
 
         # Normalize between [-1,1]
         self.action_space = spaces.Box(low=-1., high=1., shape=(7,), dtype=np.float32)
@@ -110,6 +109,8 @@ class ReacherEnv(gym.Env):
         #                              high=np.asarray([val[0] for val in self.agent.get_joint_intervals()[1]]), dtype="float32")
         # self.action_space = spaces.Box(low=np.asarray([-val for val in self.agent.get_joint_upper_velocity_limits()]),
         #                              high=np.asarray([val for val in self.agent.get_joint_upper_velocity_limits()]), dtype=np.float)
+        self.pr.step()
+
 
     def distance_to_goal(self):
         # Reward is negative distance to target
@@ -134,6 +135,7 @@ class ReacherEnv(gym.Env):
         return np.concatenate([joint_pos])
 
     def reset(self):
+
         self.setup_scene()
         print(self.initial_joint_positions, self.agent.get_joint_positions())
         return self._get_state()
@@ -163,31 +165,32 @@ class ReacherEnv(gym.Env):
             new = np.interp(num,[-1,1],[low,high])
             denorm_action.append(new)
 
-        self.agent.set_joint_target_velocities(action) # Try this
+        self.agent.set_joint_target_velocities(denorm_action) # Try this
         # self.agent.set_joint_target_positions(denorm_action)
         self.pr.step()  # Step the physics simulation
 
         # Reward calculations
         success_reward, success = self.success_check()
+        # distance_reward = self.distance_to_goal()
         distance_reward = (prev_distance_to_goal - self.distance_to_goal())/self.initial_distance # Relative reward
-        reward = distance_reward + success_reward
+        reward = (distance_reward * 100) + success_reward
 
         #------------------------------------------------
         if self.step_counter % EPISODE_LENGTH == 0:
             done = True
             print('--------Reset: Timeout--------')
 
-        if success == True:
+        if success:
             done = True
             print('--------Reset: Success is true--------')
 
-        if self.dining_table.check_collision() == True :
+        if self.dining_table.check_collision():
             done = True
             reward += -100
             print("----- Reset: Collision -----")
             return self._get_state(),reward,done,info
         self.step_counter += 1
-        print(self.step_counter)
+        print(self.step_counter, " ",distance_reward," ",reward)
         return self._get_state(),reward,done,info
 
     def success_check(self):
@@ -195,17 +198,17 @@ class ReacherEnv(gym.Env):
         success_reward = -1
         success = False
 
-        if self.proximity_sensor.read() != -1 and \
-            self.proximity_sensor.is_detected(self.handle):
-            success_reward += 250
-            success = True
-            print("proximity found!")
+        # if self.proximity_sensor.read() != -1 and \
+        #     self.proximity_sensor.is_detected(self.handle):
+        #     success_reward += 250
+        #     success = True
+        #     print("proximity found!")
 
         # print(self.proximity_sensor.read())
         if self.proximity_sensor.read() < DISTANCE and \
                 self.proximity_sensor.read() != -1 and \
                 self.proximity_sensor.is_detected(self.handle):
-            success_reward = +10000.0
+            success_reward = +100000.0
             success = True
         return success_reward, success
 
@@ -215,41 +218,43 @@ class ReacherEnv(gym.Env):
 
 ## ------------------------------------------------------------------
 
-checkpoint_callback = CheckpointCallback(save_freq=5000, save_path='./models/3/',
-                                         name_prefix='norm_gpu_new')
+if __name__ == "__main__":
+    pass
+    # checkpoint_callback = CheckpointCallback(save_freq=5000, save_path='./models/3/',
+    #                                         name_prefix='norm_gpu_new')
 
-env = ReacherEnv()
-env.seed(666)
-env = Monitor(env)
+    # env = ReacherEnv()
+    # env.seed(666)
+    # env = Monitor(env)
 
-model = PPO('MlpPolicy',n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS ,
-                env=env, verbose=2, tensorboard_log=log_path)
+    # # model = PPO('MlpPolicy',n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS ,
+    # #                 env=env, verbose=2, tensorboard_log=log_path)
 
-# print(env.spec)
-# print(check_env(env))
+    # # # # print(env.spec)
+    # # # # print(check_env(env))
 
-# +++++ Training +++++
-model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=checkpoint_callback)
-model.save(model_path)
+    # # # # +++++ Training +++++
+    # # # model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=checkpoint_callback)
+    # # # model.save(model_path)
 
-# # +++++ Evaluation +++++
-# model.load("/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/models/4/norm_gpu_new_100000_steps.zip")
-# mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5, return_episode_rewards=True)
-# # print("====>","mean_reward : ",mean_reward ,"std_reward : ",std_reward)
+    # # # +++++ Evaluation +++++
+    # model = PPO.load("/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/models/3/norm_gpu_new_2100_steps.zip", n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS,env=env, verbose=2, tensorboard_log=log_path)
+    # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5, return_episode_rewards=False)
+    # print("====>","mean_reward : ",mean_reward ,"std_reward : ",std_reward)
 
 
-## +++++ Random Eval +++++
-env = ReacherEnv()
-obs = env.reset()
-n_steps = 10000
-for i in range(n_steps):
-    # Random action
-    action, state = model.predict()
-    action = env.action_space.sample()
-    print(action)
-    obs, reward, done, info = env.step(action)
-    if done or (i%3000 == 0):
-        obs = env.reset()
+    # ## +++++ Random Eval +++++
+    # env = ReacherEnv()
+    # obs = env.reset()
+    # n_steps = 10000
+    # for i in range(n_steps):
+    #     # Random action
+    #     action, state = model.predict()
+    #     action = env.action_space.sample()
+    #     print(action)
+    #     obs, reward, done, info = env.step(action)
+    #     if done or (i%3000 == 0):
+    #         obs = env.reset()
 
-env.close()
-env.shutdown()
+    # env.close()
+    # env.shutdown()
