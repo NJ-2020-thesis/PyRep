@@ -9,6 +9,7 @@
 import pickle
 import random
 import uuid
+import cv2
 from os.path import abspath, dirname, join
 from scipy.interpolate import interp1d
 
@@ -46,6 +47,8 @@ POLICY_UPDATE_STEPS = 25
 EPISODE_LENGTH = 100
 TOTAL_TIMESTEPS = 100000
 
+counter = 0
+
 # GPU
 print("GPU Available : ",stable_baselines3.common.utils.get_device())
 
@@ -70,7 +73,7 @@ class ReacherEnv(gym.Env):
         self.agent_state = self.agent.get_configuration_tree()
 
         self.vision_sensor = VisionSensor("vision_sensor")
-        self.vision_sensor.set_resolution([64,64])
+        self.vision_sensor.set_resolution([128,128])
 
         self.dining_table = Shape('diningTable')
 
@@ -166,12 +169,22 @@ class ReacherEnv(gym.Env):
         print(self.step_counter," ",distance_reward*10," ",success_reward," ",angle_reward," ",reward)
         return self._get_state(),reward,done,info
     
-    # ---------------------------REWARDS-----------------------------
+    def _get_state(self):
+        # Return state containing arm joint angles/velocities & target position
+        global counter
 
+        initial_image = self.vision_sensor.capture_rgb()
+        # cv2.imwrite("/home/anirudh/Desktop/result/"+str(counter)+".jpg",initial_image*255)
+        # counter += 1
+
+        # initial_representation = 
+        # goal_representation = 
+        joint_pos = self.agent.get_joint_positions()
+        return np.concatenate([joint_pos])
+
+    # ---------------------------REWARDS-----------------------------
     def reward_distance_to_goal(self):
         # Reward is negative distance to target
-        # ax, ay, az = self.agent_ee_tip.get_position()
-        # tx, ty, tz = self.target.get_position()
         agent_position = self.agent_ee_tip.get_position()
         target_position = self.target.get_position()
 
@@ -191,7 +204,6 @@ class ReacherEnv(gym.Env):
         orientation_value =  (np.dot( agent_orientation, target_orientation )
         / max( np.linalg.norm(agent_orientation) * np.linalg.norm(target_orientation), 1e-10 ))
 
-        # print(orientation_value," ", agent_orientation, " ", target_orientation)
         return abs(orientation_value)
 
 
@@ -228,14 +240,6 @@ class ReacherEnv(gym.Env):
         # TARGET RANDOMIZATION
         self.random_handle_pos = list(np.random.uniform(self.position_min, self.position_max))
         self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
-    
-    def _get_state(self):
-        # Return state containing arm joint angles/velocities & target position
-        # initial_image = self.vision_sensor.capture_rgb()
-        # initial_representation = 
-        # goal_representation = 
-        joint_pos = self.agent.get_joint_positions()
-        return np.concatenate([joint_pos])
 
     def shutdown(self):
         self.pr.stop()
@@ -245,41 +249,4 @@ class ReacherEnv(gym.Env):
 
 if __name__ == "__main__":
     pass
-    # checkpoint_callback = CheckpointCallback(save_freq=5000, save_path='./models/3/',
-    #                                         name_prefix='norm_gpu_new')
-
-    # env = ReacherEnv()
-    # env.seed(666)
-    # env = Monitor(env)
-
-    # # model = PPO('MlpPolicy',n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS ,
-    # #                 env=env, verbose=2, tensorboard_log=log_path)
-
-    # # # # print(env.spec)
-    # # # # print(check_env(env))
-
-    # # # # +++++ Training +++++
-    # # # model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=checkpoint_callback)
-    # # # model.save(model_path)
-
-    # # # +++++ Evaluation +++++
-    # model = PPO.load("/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/models/3/norm_gpu_new_2100_steps.zip", n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS,env=env, verbose=2, tensorboard_log=log_path)
-    # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5, return_episode_rewards=False)
-    # print("====>","mean_reward : ",mean_reward ,"std_reward : ",std_reward)
-
-
-    # ## +++++ Random Eval +++++
-    # env = ReacherEnv()
-    # obs = env.reset()
-    # n_steps = 10000
-    # for i in range(n_steps):
-    #     # Random action
-    #     action, state = model.predict()
-    #     action = env.action_space.sample()
-    #     print(action)
-    #     obs, reward, done, info = env.step(action)
-    #     if done or (i%3000 == 0):
-    #         obs = env.reset()
-
-    # env.close()
-    # env.shutdown()
+   

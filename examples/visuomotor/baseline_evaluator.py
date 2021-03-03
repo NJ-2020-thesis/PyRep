@@ -35,14 +35,18 @@ POLICY_UPDATE_STEPS = 50
 EPISODE_LENGTH = 300
 TOTAL_TIMESTEPS = 20000
 
-PATH = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/models/test1/5/norm_gpu_new_100000_steps.zip"
+MODEL_PATH = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/" \
+                "visuomotor/models/trial_5/29/gpu_8000_steps.zip"
 
-env = ReacherEnv(headless=False)
+env = ReacherEnv(headless=True)
 env.seed(666)
 env = Monitor(env)
 
 # +++++ Evaluation +++++
-model = PPO.load(PATH \
+model = PPO.load(MODEL_PATH \
 , n_steps = EPISODE_LENGTH, n_epochs= POLICY_UPDATE_STEPS,env=env, verbose=2)
 mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=5, return_episode_rewards=False)
 print("====>","mean_reward : ",mean_reward ,"std_reward : ",std_reward)
+
+env.close()
+env.shutdown()
