@@ -7,6 +7,7 @@
 # https://medium.com/pytorch/robotic-assembly-using-deep-reinforcement-learning-dfd9916c5ad7
 
 import pickle
+import random
 import uuid
 from os.path import abspath, dirname, join
 from scipy.interpolate import interp1d
@@ -95,13 +96,16 @@ class ReacherEnv(gym.Env):
                             [handle_bounding_box[1],handle_bounding_box[3],handle_bounding_box[5]*BOUNDING_BOX_EPS]
         self.random_handle_pos = list(np.random.uniform(self.position_min, self.position_max))
         self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
+        self.target.set_orientation([np.deg2rad(0), \
+                                    np.deg2rad(-90),\
+                                    np.deg2rad(0)])
 
         # -------------------------------------------------
         # Setting action and state space for robot 
         self.observation_space = spaces.Box(low=np.asarray([val[0] for val in self.agent.get_joint_intervals()[1]]),
                                      high=np.asarray([val[1] for val in self.agent.get_joint_intervals()[1]]), dtype=np.float)
 
-        self.initial_distance = self.distance_to_goal()
+        self.initial_distance = self.reward_distance_to_goal()
 
         # Normalize between [-1,1]
         self.action_space = spaces.Box(low=-1., high=1., shape=(7,), dtype=np.float32)
@@ -111,49 +115,16 @@ class ReacherEnv(gym.Env):
         #                              high=np.asarray([val for val in self.agent.get_joint_upper_velocity_limits()]), dtype=np.float)
         self.pr.step()
 
-
-    def distance_to_goal(self):
-        # Reward is negative distance to target
-        ax, ay, az = self.agent_ee_tip.get_position()
-        tx, ty, tz = self.target.get_position()
-
-        # reward = -np.sqrt((ax - tx) ** 2 + (ay - ty) ** 2 + (az - tz) ** 2)
-        reward = np.sqrt((ax - tx) ** 2 + (ay - ty) ** 2 + (az - tz) ** 2)
-
-        # Reset environment with initial conditions
-        self.agent.set_joint_target_velocities([0,0,0,0,0,0,0])
-        self.agent.set_joint_target_positions([0,0,0,0,0,0,0])
-
-        return reward
-
-    def _get_state(self):
-        # Return state containing arm joint angles/velocities & target position
-        # initial_image = self.vision_sensor.capture_rgb()
-        # initial_representation = 
-        # goal_representation = 
-        joint_pos = self.agent.get_joint_positions()
-        return np.concatenate([joint_pos])
-
     def reset(self):
 
         self.setup_scene()
         print(self.initial_joint_positions, self.agent.get_joint_positions())
         return self._get_state()
 
-    def setup_scene(self):
-
-        self.agent.set_joint_positions(self.initial_joint_positions)
-        self.pr.set_configuration_tree(self.gripper_state)
-        self.pr.set_configuration_tree(self.door_state)
-
-        # Target randomization
-        self.random_handle_pos = list(np.random.uniform(self.position_min, self.position_max))
-        self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
-
     def step(self, action):
         done = False
         info = {}
-        prev_distance_to_goal = self.distance_to_goal()
+        prev_distance_to_goal = self.reward_distance_to_goal()
 
         # Denorm values
         lower_limits = [-val for val in self.agent.get_joint_upper_velocity_limits()]
@@ -170,10 +141,11 @@ class ReacherEnv(gym.Env):
         self.pr.step()  # Step the physics simulation
 
         # Reward calculations
-        success_reward, success = self.success_check()
-        # distance_reward = self.distance_to_goal()
-        distance_reward = (prev_distance_to_goal - self.distance_to_goal())/self.initial_distance # Relative reward
-        reward = (distance_reward * 100) + success_reward
+        success_reward, success = self.reward_success()
+        angle_reward = self.reward_orientation()
+        # distance_reward = self.reward_distance_to_goal()
+        distance_reward = (prev_distance_to_goal - self.reward_distance_to_goal())/self.initial_distance # Relative reward
+        reward = (distance_reward * 10) + success_reward + angle_reward
 
         #------------------------------------------------
         if self.step_counter % EPISODE_LENGTH == 0:
@@ -184,25 +156,49 @@ class ReacherEnv(gym.Env):
             done = True
             print('--------Reset: Success is true--------')
 
-        if self.dining_table.check_collision():
+        if self.dining_table.check_collision() or self.door.check_collision(obj=self.agent):
             done = True
             reward += -100
             print("----- Reset: Collision -----")
             return self._get_state(),reward,done,info
+
         self.step_counter += 1
-        print(self.step_counter, " ",distance_reward," ",reward)
+        print(self.step_counter," ",distance_reward*10," ",success_reward," ",angle_reward," ",reward)
         return self._get_state(),reward,done,info
+    
+    # ---------------------------REWARDS-----------------------------
 
-    def success_check(self):
+    def reward_distance_to_goal(self):
+        # Reward is negative distance to target
+        # ax, ay, az = self.agent_ee_tip.get_position()
+        # tx, ty, tz = self.target.get_position()
+        agent_position = self.agent_ee_tip.get_position()
+        target_position = self.target.get_position()
+
+        # reward = -np.sqrt((ax - tx) ** 2 + (ay - ty) ** 2 + (az - tz) ** 2)
+        reward = np.linalg.norm(agent_position - target_position)
+
+        # Reset environment with initial conditions
+        self.agent.set_joint_target_velocities([0,0,0,0,0,0,0])
+        self.agent.set_joint_target_positions([0,0,0,0,0,0,0])
+
+        return reward
+    
+    def reward_orientation(self):
+        agent_orientation = self.agent_ee_tip.get_orientation()
+        target_orientation = self.target.get_orientation()
+
+        orientation_value =  (np.dot( agent_orientation, target_orientation )
+        / max( np.linalg.norm(agent_orientation) * np.linalg.norm(target_orientation), 1e-10 ))
+
+        # print(orientation_value," ", agent_orientation, " ", target_orientation)
+        return abs(orientation_value)
+
+
+    def reward_success(self):
         DISTANCE = 0.03
-        success_reward = -1
+        success_reward = -1 # default reward per timestep
         success = False
-
-        # if self.proximity_sensor.read() != -1 and \
-        #     self.proximity_sensor.is_detected(self.handle):
-        #     success_reward += 250
-        #     success = True
-        #     print("proximity found!")
 
         # print(self.proximity_sensor.read())
         if self.proximity_sensor.read() < DISTANCE and \
@@ -211,6 +207,35 @@ class ReacherEnv(gym.Env):
             success_reward = +100000.0
             success = True
         return success_reward, success
+
+    # ------------------------------RESET-------------------------
+    def setup_scene(self):
+        
+        # ----------------------------------------------
+        # ROBOT POSE RANDOMIZATION
+        random_pose = list(np.arange(-0.03,0.03,0.002))
+        eps = random.sample(random_pose, 7)
+        eps[6] = random.sample(list(np.arange(-3.0,3.0,0.2)),1)[0] # randomizing the gripper
+        random_start_joint_positions = np.add(self.initial_joint_positions ,eps)
+        self.agent.set_joint_positions(random_start_joint_positions)
+
+        # ----------------------------------------------
+        # ENV RANDOMIZATION
+        self.pr.set_configuration_tree(self.gripper_state)
+        self.pr.set_configuration_tree(self.door_state)
+
+        # ----------------------------------------------
+        # TARGET RANDOMIZATION
+        self.random_handle_pos = list(np.random.uniform(self.position_min, self.position_max))
+        self.target.set_position(position = self.random_handle_pos,relative_to=self.handle)
+    
+    def _get_state(self):
+        # Return state containing arm joint angles/velocities & target position
+        # initial_image = self.vision_sensor.capture_rgb()
+        # initial_representation = 
+        # goal_representation = 
+        joint_pos = self.agent.get_joint_positions()
+        return np.concatenate([joint_pos])
 
     def shutdown(self):
         self.pr.stop()

@@ -2,8 +2,9 @@ import glob
 import os
 import pickle
 import uuid
-from os.path import abspath, dirname, join
 import time
+from os.path import abspath, dirname, join
+from timeit import default_timer as timer
 
 import gym
 import numpy as np
@@ -31,26 +32,28 @@ from baseline_door_env_training import ReacherEnv
 
 # ==================================================
 # Paths to save values
-log_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/log/"
+log_path = "./models/trial_5/log/"
+model_save_path = './models/trial_5/'
 
 SCENE_FILE = join(dirname(abspath(__file__)),
                   'scene_kinova3_door_env_random.ttt')
 
 # Hyperparams
-POLICY_UPDATE_STEPS = 50
-EPISODE_LENGTH = 300
-TOTAL_TIMESTEPS = 100000
+POLICY_UPDATE_STEPS = 20
+EPISODE_LENGTH = 150
+TOTAL_TIMESTEPS = 8000
 
 NEW_TRAINING = True
-
 # ==================================================
 
+start_full = timer()
+
+
 model = None
-for i in range(10):
-    model_save_path = './models/test1/'
+for i in range(30):
     print("Model save path : ",model_save_path)
-    checkpoint_callback = CheckpointCallback(save_freq=50000, save_path=model_save_path+str(i),
-                                         name_prefix='norm_gpu_new')
+    checkpoint_callback = CheckpointCallback(save_freq=4000, save_path=model_save_path+str(i),
+                                         name_prefix='gpu')
 
     env = ReacherEnv(headless=True)
     env.seed(666)
@@ -64,21 +67,18 @@ for i in range(10):
         else:
             # +++++ Training +++++
             print("======>>>> Running <<<<======",i)
-            model_folder = model_save_path +str(i-1) +"/*"
+            model_folder = model_save_path + str(i-1) +"/*"
             list_of_files = glob.glob(model_folder) 
+            print(list_of_files)
             latest_file = max(list_of_files, key=os.path.getctime)
             model = PPO.load(latest_file,  n_steps = EPISODE_LENGTH, n_epochs = POLICY_UPDATE_STEPS,
                         env = env, verbose = 2, tensorboard_log = log_path)
     
-    else:
-        model_folder = model_save_path + "/*"
-        latest_model_folder = max(glob.glob(model_folder), key=os.path.getctime)
-        print(latest_model_folder)
-        latest_model = max(glob.glob(latest_model_folder + "/*"), key=os.path.getctime)
-        print(latest_model)
-        # model = PPO.load(latest_model,  n_steps = EPISODE_LENGTH, n_epochs = POLICY_UPDATE_STEPS,
-        #                 env = env, verbose = 2, tensorboard_log = log_path)
 
     model.learn(total_timesteps=TOTAL_TIMESTEPS, callback=checkpoint_callback)
     env.shutdown()
     time.sleep(2)
+
+end_full = timer()
+print(" ")
+print("Final Execution Time ==> ",end_full - start_full)
