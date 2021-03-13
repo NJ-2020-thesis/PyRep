@@ -10,6 +10,7 @@ import pickle
 import random
 import uuid
 import cv2
+import glob
 from os.path import abspath, dirname, join
 from scipy.interpolate import interp1d
 
@@ -22,7 +23,9 @@ from pyrep.objects.shape import Shape
 from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.robots.arms.kinova3 import Kinova3
 from pyrep.robots.arms.panda import Panda
-from pyrep.objects.proximity_sensor import ProximitySensor 
+from pyrep.objects.proximity_sensor import ProximitySensor
+from pyrep.textures.texture import Texture
+from pyrep.const import TextureMappingMode, RenderMode
 
 import stable_baselines3
 from stable_baselines3 import PPO
@@ -34,16 +37,16 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.monitor import Monitor
 
-# Paths to save values
-rewards_file = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/results/rewards"+ str(uuid.uuid4())[:8] +"_1000.txt"
-model_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/results/model_"+ str(uuid.uuid4())[:8] +"_1000.mdl"
-log_path = "/home/anirudh/HBRS/Master-Thesis/NJ-2020-thesis/PyRep/examples/visuomotor/log/"
+# Texture paths
+DOOR_TEXTURES = glob.glob("/home/anirudh/HBRS/Master-Thesis/Images/Textures/Waste/*.jpg")
+HANDLE_TEXTURES = glob.glob("/home/anirudh/HBRS/Master-Thesis/Images/Textures/Handle/*.jpg")
+
 
 SCENE_FILE = join(dirname(abspath(__file__)),
                   'scene_kinova3_door_env_random.ttt')
 
 # Hyperparams
-POLICY_UPDATE_STEPS = 25 
+POLICY_UPDATE_STEPS = 25
 EPISODE_LENGTH = 100
 TOTAL_TIMESTEPS = 100000
 
@@ -57,7 +60,7 @@ class ReacherEnv(gym.Env):
     def __init__(self,headless=True):
         super(ReacherEnv,self).__init__()
 
-        # Creating a Custom Pyrep environment 
+        # Creating a Custom Pyrep environment
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=headless)
         self.pr.start()
@@ -73,6 +76,7 @@ class ReacherEnv(gym.Env):
         self.agent_state = self.agent.get_configuration_tree()
 
         self.vision_sensor = VisionSensor("vision_sensor")
+        self.vision_sensor.set_render_mode(render_mode=RenderMode.OPENGL3)
         self.vision_sensor.set_resolution([128,128])
 
         self.dining_table = Shape('diningTable')
@@ -88,8 +92,10 @@ class ReacherEnv(gym.Env):
         # Saving Env initial state
         self.gripper = Shape('ROBOTIQ_85')
         self.gripper_state = self.gripper.get_configuration_tree()
+
         self.door = Shape('door_frame')
         self.door_state = self.door.get_configuration_tree()
+        self.door_surface = Shape('door_main_visible')
 
         # -------------------------------------------------
         # Bounding box within wich we get successful grasp
@@ -104,7 +110,7 @@ class ReacherEnv(gym.Env):
                                     np.deg2rad(0)])
 
         # -------------------------------------------------
-        # Setting action and state space for robot 
+        # Setting action and state space for robot
         self.observation_space = spaces.Box(low=np.asarray([val[0] for val in self.agent.get_joint_intervals()[1]]),
                                      high=np.asarray([val[1] for val in self.agent.get_joint_intervals()[1]]), dtype=np.float)
 
@@ -133,7 +139,7 @@ class ReacherEnv(gym.Env):
         lower_limits = [-val for val in self.agent.get_joint_upper_velocity_limits()]
         upper_limits = [val for val in self.agent.get_joint_upper_velocity_limits()]
 
-        denorm_action = [] 
+        denorm_action = []
 
         for num,low,high in zip(action,lower_limits,upper_limits):
             new = np.interp(num,[-1,1],[low,high])
@@ -168,17 +174,17 @@ class ReacherEnv(gym.Env):
         self.step_counter += 1
         print(self.step_counter," ",distance_reward*10," ",success_reward," ",angle_reward," ",reward)
         return self._get_state(),reward,done,info
-    
+
     def _get_state(self):
         # Return state containing arm joint angles/velocities & target position
         global counter
 
         initial_image = self.vision_sensor.capture_rgb()
         # cv2.imwrite("/home/anirudh/Desktop/result/"+str(counter)+".jpg",initial_image*255)
-        # counter += 1
+        counter += 1
 
-        # initial_representation = 
-        # goal_representation = 
+        # initial_representation =
+        # goal_representation =
         joint_pos = self.agent.get_joint_positions()
         return np.concatenate([joint_pos])
 
@@ -196,7 +202,7 @@ class ReacherEnv(gym.Env):
         self.agent.set_joint_target_positions([0,0,0,0,0,0,0])
 
         return reward
-    
+
     def reward_orientation(self):
         agent_orientation = self.agent_ee_tip.get_orientation()
         target_orientation = self.target.get_orientation()
@@ -212,20 +218,25 @@ class ReacherEnv(gym.Env):
         success_reward = -1 # default reward per timestep
         success = False
 
-        # print(self.proximity_sensor.read())
+        # print(self.proximity_sensor.is_detected(self.handle)," ",-1 != self.proximity_sensor.read() < DISTANCE," ",self.proximity_sensor.read())
         if self.proximity_sensor.read() < DISTANCE and \
                 self.proximity_sensor.read() != -1 and \
                 self.proximity_sensor.is_detected(self.handle):
             success_reward = +100000.0
             success = True
+
+        # if self.proximity_sensor.read() < DISTANCE and \
+        #         self.proximity_sensor.read() != -1:
+        #     success_reward = +100000.0
+        #     success = True
+
         return success_reward, success
 
     # ------------------------------RESET-------------------------
     def setup_scene(self):
-        
         # ----------------------------------------------
         # ROBOT POSE RANDOMIZATION
-        random_pose = list(np.arange(-0.03,0.03,0.002))
+        random_pose = list(np.arange(-0.05,0.05,0.002))
         eps = random.sample(random_pose, 7)
         eps[6] = random.sample(list(np.arange(-3.0,3.0,0.2)),1)[0] # randomizing the gripper
         random_start_joint_positions = np.add(self.initial_joint_positions ,eps)
@@ -233,8 +244,24 @@ class ReacherEnv(gym.Env):
 
         # ----------------------------------------------
         # ENV RANDOMIZATION
-        self.pr.set_configuration_tree(self.gripper_state)
-        self.pr.set_configuration_tree(self.door_state)
+        # self.pr.set_configuration_tree(self.gripper_state)
+        # self.pr.set_configuration_tree(self.door_state)
+
+        # # ---> Door
+        # door_path = random.choice(DOOR_TEXTURES)
+        # d_text_ob, door_texture = self.pr.create_texture(door_path)
+        # for item in self.door_surface.ungroup():
+        #     item.remove_texture()
+        #     if item.get_name() == "Plane_4":
+        #         # item.remove_texture()
+        #         item.set_texture(door_texture,TextureMappingMode.PLANE)
+        # d_text_ob.remove()
+
+        # # ---> Handle
+        # h_text_ob, handle_texture = self.pr.create_texture(random.choice(HANDLE_TEXTURES))
+        # self.handle.remove_texture()
+        # self.handle.set_texture(handle_texture,TextureMappingMode.CYLINDER)
+        # h_text_ob.remove()
 
         # ----------------------------------------------
         # TARGET RANDOMIZATION
@@ -249,4 +276,3 @@ class ReacherEnv(gym.Env):
 
 if __name__ == "__main__":
     pass
-   
