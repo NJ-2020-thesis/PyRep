@@ -172,7 +172,7 @@ class ReacherEnv(gym.Env):
             return self._get_state(),reward,done,info
 
         self.step_counter += 1
-        print(self.step_counter," ",distance_reward*10," ",success_reward," ",angle_reward," ",reward)
+        # print(self.step_counter," ",distance_reward*10," ",success_reward," ",angle_reward," ",reward)
         return self._get_state(),reward,done,info
 
     def _get_state(self):
@@ -234,6 +234,14 @@ class ReacherEnv(gym.Env):
 
     # ------------------------------RESET-------------------------
     def setup_scene(self):
+
+        # ---------------------------------------------
+        # for item in self.agent.ungroup():
+        #     if item.is_dynamic():
+        #         item.reset_dynamic_object()
+        self.agent.reset_dynamic_object()
+        self.pr.set_configuration_tree(self.agent_state)
+
         # ----------------------------------------------
         # ROBOT POSE RANDOMIZATION
         random_pose = list(np.arange(-0.05,0.05,0.002))
